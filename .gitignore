@@ -107,3 +107,6 @@ venv.bak/
 .vscode/
 
 main.py
+node_modules/
+frontend/dist/
+webapp/static/dist/
