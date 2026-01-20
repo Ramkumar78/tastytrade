@@ -150,9 +150,10 @@ This repository includes a "Command UI" dashboard (`thalaiva-command`) to monito
       ```
     - Open `.env` and fill in your Tastytrade API credentials:
       ```env
-      TT_CLIENT_ID=your_client_id
-      TT_SECRET=your_secret
+      TT_REFRESH_TOKEN=your_refresh_token_jwt
+      TT_SECRET=your_client_secret
       ```
+      **Note:** `TT_REFRESH_TOKEN` must be a valid Refresh Token (JWT string), not just a Client ID.
 
 ### How to Run
 

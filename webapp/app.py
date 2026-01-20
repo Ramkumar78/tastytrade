@@ -13,15 +13,28 @@ load_dotenv()
 # Set static folder to where Dockerfile puts the build
 app = Flask(__name__, static_folder='static/dist')
 
+def get_session():
+    provider_secret = os.getenv('TT_SECRET')
+    refresh_token = os.getenv('TT_REFRESH_TOKEN') or os.getenv('TT_CLIENT_ID')
+    is_test = os.getenv('TT_IS_TEST', 'False').lower() == 'true'
+
+    if not refresh_token:
+        raise ValueError("Missing TT_REFRESH_TOKEN (or TT_CLIENT_ID)")
+
+    if "." not in refresh_token:
+        logger.warning("Provided token does not look like a JWT (no dots found). Ensure you are using a valid Refresh Token, not just a Client ID.")
+
+    return Session(
+        provider_secret=provider_secret,
+        refresh_token=refresh_token,
+        is_test=is_test
+    )
+
 @app.route('/api/auth/status')
 def get_status():
     logger.info("Checking auth status...")
     try:
-        # Initializing session with your credentials
-        session = Session(
-            provider_secret=os.getenv('TT_SECRET'),
-            refresh_token=os.getenv('TT_CLIENT_ID')
-        )
+        session = get_session()
         logger.info("Session initialized for auth check.")
         if session.validate():
             logger.info("Session validated successfully.")
@@ -38,7 +51,7 @@ def get_metrics():
     # Thalaiva Logic: Defend the $10,000 line
     logger.info("Fetching account metrics...")
     try:
-        session = Session(provider_secret=os.getenv('TT_SECRET'), refresh_token=os.getenv('TT_CLIENT_ID'))
+        session = get_session()
         logger.info("Session initialized for metrics.")
 
         accounts = Account.get_accounts(session)
