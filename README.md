@@ -151,6 +151,16 @@ This repository includes a "Command UI" dashboard (`thalaiva-command`) to monito
 
 ### How to Run
 
+You can run the application using either Docker Compose or plain Docker commands.
+
+#### Option 1: Docker Compose (Recommended)
+
+```bash
+docker compose up --build -d
+```
+
+#### Option 2: Manual Build
+
 1.  **Build the Docker image**:
     ```bash
     docker build -t thalaiva-trading-system .
