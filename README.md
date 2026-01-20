@@ -184,6 +184,29 @@ Once the container is running, open your browser and navigate to:
 
 If you see "This site can't be reached", ensure the Docker container is running and port 5000 is not blocked or in use by another application.
 
+## Authentication Setup (Troubleshooting)
+
+If you see "Authentication Failed" or "Invalid JWT" errors in the logs, it likely means you are using a Client ID instead of a Refresh Token.
+
+To generate a valid **Refresh Token**:
+
+1.  Ensure you have your **Client ID** and **Client Secret**.
+2.  Run the helper script:
+    ```bash
+    # Run inside Docker (easiest)
+    docker compose run --rm thalaiva-command python scripts/auth_flow.py
+    ```
+    *Or locally:*
+    ```bash
+    pip install -r requirements.txt
+    python scripts/auth_flow.py
+    ```
+3.  Follow the instructions to authorize in your browser.
+4.  Update your `.env` file:
+    ```env
+    TT_REFRESH_TOKEN=<your_new_refresh_token>
+    ```
+
 ## Disclaimer
 
 This is an unofficial SDK for Tastytrade. There is no implied warranty for any actions and results which arise from using it.
