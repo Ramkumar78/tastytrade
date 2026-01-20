@@ -2,14 +2,127 @@ import React, { useState, useEffect } from 'react';
 
 const Dashboard = () => {
   const [metrics, setMetrics] = useState<any>(null);
+  const [connected, setConnected] = useState(false);
+  const [loading, setLoading] = useState(true);
+
+  // Login State
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+
+  const checkStatus = () => {
+    fetch('/api/auth/status')
+      .then(res => res.json())
+      .then(data => {
+        if (data.status === 'connected') {
+            setConnected(true);
+            fetchMetrics();
+        } else {
+            setConnected(false);
+            setLoading(false);
+        }
+      })
+      .catch(() => setLoading(false));
+  };
+
+  const fetchMetrics = () => {
+    fetch('/api/account/metrics')
+      .then(res => {
+          if (res.status === 401) {
+              setConnected(false);
+              return null;
+          }
+          return res.json();
+      })
+      .then(data => {
+          if (data && !data.error) {
+            setMetrics(data);
+          }
+          setLoading(false);
+      })
+      .catch(() => setLoading(false));
+  };
 
   useEffect(() => {
-    fetch('/api/account/metrics')
-      .then(res => res.json())
-      .then(data => setMetrics(data));
-  }, []);
+    checkStatus();
+    const interval = setInterval(() => {
+        if (connected) fetchMetrics();
+    }, 10000);
+    return () => clearInterval(interval);
+  }, [connected]);
 
-  if (!metrics) return <div className="text-white">Scanning account...</div>;
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+    setLoading(true);
+
+    try {
+        const res = await fetch('/api/auth/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username, password })
+        });
+        const data = await res.json();
+
+        if (res.ok) {
+            setConnected(true);
+            fetchMetrics();
+        } else {
+            setError(data.message || 'Login failed');
+            setLoading(false);
+        }
+    } catch (err) {
+        setError('Network error');
+        setLoading(false);
+    }
+  };
+
+  if (loading && !metrics && !error && !connected) return <div className="text-white bg-black min-h-screen p-10 font-mono">Scanning account...</div>;
+
+  if (!connected) {
+      return (
+        <div className="min-h-screen bg-black p-10 font-mono text-white flex flex-col items-center justify-center">
+            <h1 className="text-4xl font-bold tracking-tighter mb-8">THALAIVA COMMAND</h1>
+            <div className="bg-zinc-900 p-8 border border-zinc-800 rounded-lg w-full max-w-md">
+                <h2 className="text-xl mb-4">AUTHENTICATION REQUIRED</h2>
+                {error && <div className="bg-red-900/50 p-2 text-red-200 text-sm mb-4 border border-red-800">{error}</div>}
+                <p className="text-xs text-zinc-500 mb-6">
+                    Enter your Tastytrade credentials below to connect the bridge.
+                </p>
+                <form onSubmit={handleLogin} className="space-y-4">
+                    <div>
+                        <label className="block text-xs uppercase text-zinc-500 mb-1">Username / Email</label>
+                        <input
+                            type="text"
+                            className="w-full bg-black border border-zinc-700 p-2 text-white rounded focus:border-green-500 outline-none"
+                            value={username}
+                            onChange={e => setUsername(e.target.value)}
+                        />
+                    </div>
+                    <div>
+                        <label className="block text-xs uppercase text-zinc-500 mb-1">Password</label>
+                        <input
+                            type="password"
+                            className="w-full bg-black border border-zinc-700 p-2 text-white rounded focus:border-green-500 outline-none"
+                            value={password}
+                            onChange={e => setPassword(e.target.value)}
+                        />
+                    </div>
+                    <button
+                        type="submit"
+                        disabled={loading}
+                        className="w-full bg-green-900 hover:bg-green-800 text-green-100 py-3 rounded font-bold uppercase tracking-wider transition-colors disabled:opacity-50"
+                    >
+                        {loading ? 'Connecting...' : 'Connect to Casino'}
+                    </button>
+                </form>
+                <div className="mt-4 text-xs text-zinc-600 text-center">
+                    Using Legacy Session API
+                </div>
+            </div>
+        </div>
+      );
+  }
 
   return (
     <div className="min-h-screen bg-black p-10 font-mono text-white">
@@ -20,6 +133,7 @@ const Dashboard = () => {
         </div>
       </header>
 
+      {metrics ? (
       <main className="grid grid-cols-1 md:grid-cols-3 gap-8">
         {/* Metric Card: Net Liq */}
         <div className="bg-zinc-900 p-8 border border-zinc-800 rounded-lg">
@@ -44,6 +158,9 @@ const Dashboard = () => {
           <p className="text-zinc-600 text-xs mt-4 font-mono italic">"WE ARE THE CASINO"</p>
         </div>
       </main>
+      ) : (
+          <div className="text-zinc-500">Scanning account metrics...</div>
+      )}
     </div>
   );
 };

@@ -4,6 +4,7 @@ from flask import Flask, jsonify, request, send_from_directory
 from tastytrade import Session, Account
 from tastytrade.utils import TastytradeError
 from dotenv import load_dotenv
+from legacy_session import LegacySession
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
@@ -11,64 +12,94 @@ logger = logging.getLogger(__name__)
 
 load_dotenv()
 
-# Set static folder to where Dockerfile puts the build
 app = Flask(__name__, static_folder='static/dist')
 
+# Global session for interactive login
+current_session = None
+
 def get_session():
+    global current_session
+
+    # 1. Use existing interactive session if valid
+    if current_session:
+        return current_session
+
+    # 2. Try .env credentials
     provider_secret = os.getenv('TT_SECRET')
     refresh_token = os.getenv('TT_REFRESH_TOKEN') or os.getenv('TT_CLIENT_ID')
     is_test = os.getenv('TT_IS_TEST', 'False').lower() == 'true'
 
-    if not refresh_token:
-        raise ValueError("Missing TT_REFRESH_TOKEN (or TT_CLIENT_ID)")
+    if refresh_token and "." in refresh_token and provider_secret:
+        try:
+            # We cache it only if successfully created
+            if not current_session:
+                logger.info("Initializing session from .env credentials...")
+                session = Session(
+                    provider_secret=provider_secret,
+                    refresh_token=refresh_token,
+                    is_test=is_test
+                )
+                current_session = session
+                return session
+        except Exception as e:
+            logger.error(f"Failed to initialize session from .env: {e}")
 
-    if "." not in refresh_token:
-        logger.warning("Provided token does not look like a JWT (no dots found). Ensure you are using a valid Refresh Token, not just a Client ID.")
+    return None
 
-    return Session(
-        provider_secret=provider_secret,
-        refresh_token=refresh_token,
-        is_test=is_test
-    )
+@app.route('/api/auth/login', methods=['POST'])
+def login():
+    global current_session
+    data = request.json
+    username = data.get('username')
+    password = data.get('password')
+    refresh_token = data.get('refresh_token')
+
+    logger.info("Login attempt received.")
+
+    try:
+        if refresh_token:
+            provider_secret = os.getenv('TT_SECRET')
+            if not provider_secret:
+                return jsonify({"status": "error", "message": "TT_SECRET missing in server env."}), 400
+            current_session = Session(provider_secret=provider_secret, refresh_token=refresh_token)
+            logger.info("Logged in via Refresh Token.")
+        elif username and password:
+            current_session = LegacySession(username, password)
+            logger.info("Logged in via Username/Password.")
+        else:
+            return jsonify({"status": "error", "message": "Missing credentials."}), 400
+
+        return jsonify({"status": "connected", "message": "🟢 LOGGED IN"})
+    except Exception as e:
+        logger.error(f"Login failed: {e}", exc_info=True)
+        return jsonify({"status": "error", "message": str(e)}), 401
 
 @app.route('/api/auth/status')
 def get_status():
-    logger.info("Checking auth status...")
-    try:
-        session = get_session()
-        logger.info("Session initialized for auth check.")
-        if session.validate():
-            logger.info("Session validated successfully.")
-            return jsonify({"status": "connected", "message": "🟢 CASINO BRIDGE ACTIVE"})
-
-        logger.warning("Session validation failed.")
-        return jsonify({"status": "error", "message": "🛑 AUTH FAILED"})
-    except TastytradeError as e:
-        if "Invalid JWT" in str(e):
-             logger.error("Authentication Failed: The provided Refresh Token is invalid (Invalid JWT). If you provided a Client ID, please replace it with a valid Refresh Token.")
-             return jsonify({"status": "error", "message": "Invalid Refresh Token. Please update .env with a valid JWT."})
-        logger.error(f"Tastytrade API Error: {e}", exc_info=True)
-        return jsonify({"status": "error", "message": str(e)})
-    except Exception as e:
-        logger.error(f"Auth status error: {e}", exc_info=True)
-        return jsonify({"status": "error", "message": str(e)})
+    session = get_session()
+    if session:
+        try:
+            if session.validate():
+                return jsonify({"status": "connected", "message": "🟢 CASINO BRIDGE ACTIVE"})
+        except:
+            pass
+    return jsonify({"status": "disconnected", "message": "🛑 DISCONNECTED"})
 
 @app.route('/api/account/metrics')
 def get_metrics():
-    # Thalaiva Logic: Defend the $10,000 line
     logger.info("Fetching account metrics...")
     try:
         session = get_session()
-        logger.info("Session initialized for metrics.")
+        if not session:
+            return jsonify({"error": "Not authenticated. Please login."}), 401
 
+        # Use the session to get accounts
         accounts = Account.get_accounts(session)
         logger.info(f"Accounts fetched. Count: {len(accounts)}")
 
         if not accounts:
-             logger.warning("No accounts found.")
              return jsonify({"error": "No accounts found"}), 404
 
-        # We target your main margin account
         acc = accounts[0]
         logger.info(f"Using account: {acc.account_number}")
 
@@ -79,7 +110,6 @@ def get_metrics():
         used_bp = float(balances.used_derivative_buying_power)
         logger.info(f"Balances: Net Liq={net_liq}, Used BP={used_bp}")
 
-        # Calculation for Thalaiva's 30% BP Rule
         bp_usage = (used_bp / net_liq) * 100 if net_liq > 0 else 0
         logger.info(f"Calculated BP Usage: {bp_usage}%")
 
@@ -91,9 +121,6 @@ def get_metrics():
             "positions_count": len(positions)
         })
     except TastytradeError as e:
-        if "Invalid JWT" in str(e):
-             logger.error("Authentication Failed: The provided Refresh Token is invalid (Invalid JWT). If you provided a Client ID, please replace it with a valid Refresh Token.")
-             return jsonify({"error": "Invalid Refresh Token. Please update .env."}), 401
         logger.error(f"Tastytrade API Error: {e}", exc_info=True)
         return jsonify({"error": str(e)}), 500
     except Exception as e:
