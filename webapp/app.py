@@ -2,6 +2,7 @@ import os
 import logging
 from flask import Flask, jsonify, request, send_from_directory
 from tastytrade import Session, Account
+from tastytrade.utils import TastytradeError
 from dotenv import load_dotenv
 
 # Configure logging
@@ -42,6 +43,12 @@ def get_status():
 
         logger.warning("Session validation failed.")
         return jsonify({"status": "error", "message": "🛑 AUTH FAILED"})
+    except TastytradeError as e:
+        if "Invalid JWT" in str(e):
+             logger.error("Authentication Failed: The provided Refresh Token is invalid (Invalid JWT). If you provided a Client ID, please replace it with a valid Refresh Token.")
+             return jsonify({"status": "error", "message": "Invalid Refresh Token. Please update .env with a valid JWT."})
+        logger.error(f"Tastytrade API Error: {e}", exc_info=True)
+        return jsonify({"status": "error", "message": str(e)})
     except Exception as e:
         logger.error(f"Auth status error: {e}", exc_info=True)
         return jsonify({"status": "error", "message": str(e)})
@@ -83,6 +90,12 @@ def get_metrics():
             "verdict": "🟢 CLEAR" if bp_usage < 30 else "🛑 CEASE TRADING",
             "positions_count": len(positions)
         })
+    except TastytradeError as e:
+        if "Invalid JWT" in str(e):
+             logger.error("Authentication Failed: The provided Refresh Token is invalid (Invalid JWT). If you provided a Client ID, please replace it with a valid Refresh Token.")
+             return jsonify({"error": "Invalid Refresh Token. Please update .env."}), 401
+        logger.error(f"Tastytrade API Error: {e}", exc_info=True)
+        return jsonify({"error": str(e)}), 500
     except Exception as e:
         logger.error(f"Error fetching metrics: {e}", exc_info=True)
         return jsonify({"error": str(e)}), 500
