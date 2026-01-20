@@ -143,11 +143,16 @@ This repository includes a "Command UI" dashboard (`thalaiva-command`) to monito
 ### Prerequisites
 
 1.  **Docker**: Ensure Docker is installed and running.
-2.  **Credentials**: Create a `.env` file in the root directory with your Tastytrade API credentials:
-    ```env
-    TT_CLIENT_ID=your_client_id
-    TT_SECRET=your_secret
-    ```
+2.  **Credentials**:
+    - Copy `.env.example` to a new file named `.env`:
+      ```bash
+      cp .env.example .env
+      ```
+    - Open `.env` and fill in your Tastytrade API credentials:
+      ```env
+      TT_CLIENT_ID=your_client_id
+      TT_SECRET=your_secret
+      ```
 
 ### How to Run
 
