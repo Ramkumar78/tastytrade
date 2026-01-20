@@ -136,6 +136,38 @@ async with DXLinkStreamer(session) as streamer:
 
 For more examples, check out the [documentation](https://tastyworks-api.readthedocs.io/en/latest/).
 
+## Thalaiva Command Dashboard
+
+This repository includes a "Command UI" dashboard (`thalaiva-command`) to monitor your account health and enforce trading rules.
+
+### Prerequisites
+
+1.  **Docker**: Ensure Docker is installed and running.
+2.  **Credentials**: Create a `.env` file in the root directory with your Tastytrade API credentials:
+    ```env
+    TT_CLIENT_ID=your_client_id
+    TT_SECRET=your_secret
+    ```
+
+### How to Run
+
+1.  **Build the Docker image**:
+    ```bash
+    docker build -t thalaiva-trading-system .
+    ```
+
+2.  **Run the container**:
+    ```bash
+    docker run -p 5000:5000 --env-file .env thalaiva-trading-system
+    ```
+
+### Accessing the Dashboard
+
+Once the container is running, open your browser and navigate to:
+**[http://localhost:5000](http://localhost:5000)**
+
+If you see "This site can't be reached", ensure the Docker container is running and port 5000 is not blocked or in use by another application.
+
 ## Disclaimer
 
 This is an unofficial SDK for Tastytrade. There is no implied warranty for any actions and results which arise from using it.
