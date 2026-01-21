@@ -53,15 +53,18 @@ def login():
     username = data.get('username')
     password = data.get('password')
     refresh_token = data.get('refresh_token')
+    provider_secret = data.get('provider_secret')
 
     logger.info("Login attempt received.")
 
     try:
         if refresh_token:
-            provider_secret = os.getenv('TT_SECRET')
-            if not provider_secret:
-                return jsonify({"status": "error", "message": "TT_SECRET missing in server env."}), 400
-            current_session = Session(provider_secret=provider_secret, refresh_token=refresh_token)
+            # Use provided secret or fallback to env
+            secret = provider_secret or os.getenv('TT_SECRET')
+            if not secret:
+                return jsonify({"status": "error", "message": "Client Secret missing. Please provide it."}), 400
+
+            current_session = Session(provider_secret=secret, refresh_token=refresh_token)
             logger.info("Logged in via Refresh Token.")
         elif username and password:
             current_session = LegacySession(username, password)

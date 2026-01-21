@@ -6,8 +6,8 @@ const Dashboard = () => {
   const [loading, setLoading] = useState(true);
 
   // Login State
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
+  const [refreshToken, setRefreshToken] = useState('');
+  const [clientSecret, setClientSecret] = useState('');
   const [error, setError] = useState('');
 
   const checkStatus = () => {
@@ -60,7 +60,7 @@ const Dashboard = () => {
         const res = await fetch('/api/auth/login', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ username, password })
+            body: JSON.stringify({ refresh_token: refreshToken, provider_secret: clientSecret })
         });
         const data = await res.json();
 
@@ -87,25 +87,28 @@ const Dashboard = () => {
                 <h2 className="text-xl mb-4">AUTHENTICATION REQUIRED</h2>
                 {error && <div className="bg-red-900/50 p-2 text-red-200 text-sm mb-4 border border-red-800">{error}</div>}
                 <p className="text-xs text-zinc-500 mb-6">
-                    Enter your Tastytrade credentials below to connect the bridge.
+                    Enter your Tastytrade API credentials to connect.
                 </p>
                 <form onSubmit={handleLogin} className="space-y-4">
                     <div>
-                        <label className="block text-xs uppercase text-zinc-500 mb-1">Username / Email</label>
+                        <label className="block text-xs uppercase text-zinc-500 mb-1">Refresh Token (JWT)</label>
                         <input
                             type="text"
                             className="w-full bg-black border border-zinc-700 p-2 text-white rounded focus:border-green-500 outline-none"
-                            value={username}
-                            onChange={e => setUsername(e.target.value)}
+                            value={refreshToken}
+                            onChange={e => setRefreshToken(e.target.value)}
+                            placeholder="Enter your Refresh Token"
                         />
+                        <div className="text-[10px] text-zinc-600 mt-1">Not a Client ID. Use auth script if needed.</div>
                     </div>
                     <div>
-                        <label className="block text-xs uppercase text-zinc-500 mb-1">Password</label>
+                        <label className="block text-xs uppercase text-zinc-500 mb-1">Client Secret</label>
                         <input
                             type="password"
                             className="w-full bg-black border border-zinc-700 p-2 text-white rounded focus:border-green-500 outline-none"
-                            value={password}
-                            onChange={e => setPassword(e.target.value)}
+                            value={clientSecret}
+                            onChange={e => setClientSecret(e.target.value)}
+                            placeholder="Enter your Client Secret"
                         />
                     </div>
                     <button
@@ -116,9 +119,6 @@ const Dashboard = () => {
                         {loading ? 'Connecting...' : 'Connect to Casino'}
                     </button>
                 </form>
-                <div className="mt-4 text-xs text-zinc-600 text-center">
-                    Using Legacy Session API
-                </div>
             </div>
         </div>
       );
