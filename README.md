@@ -136,6 +136,77 @@ async with DXLinkStreamer(session) as streamer:
 
 For more examples, check out the [documentation](https://tastyworks-api.readthedocs.io/en/latest/).
 
+## Thalaiva Command Dashboard
+
+This repository includes a "Command UI" dashboard (`thalaiva-command`) to monitor your account health and enforce trading rules.
+
+### Prerequisites
+
+1.  **Docker**: Ensure Docker is installed and running.
+2.  **Credentials**:
+    - Copy `.env.example` to a new file named `.env`:
+      ```bash
+      cp .env.example .env
+      ```
+    - Open `.env` and fill in your Tastytrade API credentials:
+      ```env
+      TT_REFRESH_TOKEN=your_refresh_token_jwt
+      TT_SECRET=your_client_secret
+      ```
+      **Note:** `TT_REFRESH_TOKEN` must be a valid Refresh Token (JWT string), not just a Client ID.
+
+### How to Run
+
+You can run the application using either Docker Compose or plain Docker commands.
+
+#### Option 1: Docker Compose (Recommended)
+
+```bash
+docker compose up --build -d
+```
+
+#### Option 2: Manual Build
+
+1.  **Build the Docker image**:
+    ```bash
+    docker build -t thalaiva-trading-system .
+    ```
+
+2.  **Run the container**:
+    ```bash
+    docker run -p 5000:5000 --env-file .env thalaiva-trading-system
+    ```
+
+### Accessing the Dashboard
+
+Once the container is running, open your browser and navigate to:
+**[http://localhost:5000](http://localhost:5000)**
+
+If you see "This site can't be reached", ensure the Docker container is running and port 5000 is not blocked or in use by another application.
+
+## Authentication Setup (Troubleshooting)
+
+If you see "Authentication Failed" or "Invalid JWT" errors in the logs, it likely means you are using a Client ID instead of a Refresh Token.
+
+To generate a valid **Refresh Token**:
+
+1.  Ensure you have your **Client ID** and **Client Secret**.
+2.  Run the helper script:
+    ```bash
+    # Run inside Docker (easiest)
+    docker compose run --rm thalaiva-command python scripts/auth_flow.py
+    ```
+    *Or locally:*
+    ```bash
+    pip install -r requirements.txt
+    python scripts/auth_flow.py
+    ```
+3.  Follow the instructions to authorize in your browser.
+4.  Update your `.env` file:
+    ```env
+    TT_REFRESH_TOKEN=<your_new_refresh_token>
+    ```
+
 ## Disclaimer
 
 This is an unofficial SDK for Tastytrade. There is no implied warranty for any actions and results which arise from using it.
